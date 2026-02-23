@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class PayoutRequest(BaseModel):
@@ -18,7 +18,7 @@ class PayoutRequest(BaseModel):
     user_country: Optional[str] = Field(None, description="ISO 3166-1 alpha-3 country of user's registered account")
     ip_country: Optional[str] = Field(None, description="ISO 3166-1 alpha-3 country resolved from IP")
     account_created_at: Optional[datetime] = Field(None, description="When the user's account was created")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Transaction timestamp")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Transaction timestamp")
     metadata: Optional[dict] = None
 
     model_config = {

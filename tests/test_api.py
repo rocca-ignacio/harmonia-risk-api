@@ -6,11 +6,11 @@ Fixtures (setup_db, client) are provided by tests/conftest.py.
 Run with:
     pytest tests/ -v
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def ts(delta_minutes: int = 0) -> str:
-    return (datetime.utcnow() + timedelta(minutes=delta_minutes)).isoformat()
+    return (datetime.now(timezone.utc) + timedelta(minutes=delta_minutes)).isoformat()
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ async def test_new_account_large_payout(client):
         "device_id": "DEV-NEW-99",
         "user_country": "PHL",
         "ip_country": "PHL",
-        "account_created_at": (datetime.utcnow() - timedelta(days=1)).isoformat(),
+        "account_created_at": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
         "timestamp": ts(),
     }
     r = await client.post("/api/v1/risk/score", json=payload)
@@ -231,7 +231,7 @@ async def test_money_mule(client):
 
 async def test_time_of_day_suspicious(client):
     """Transaction at 2am UTC should trigger time_of_day signal."""
-    suspicious_ts = datetime.utcnow().replace(hour=2, minute=30, second=0)
+    suspicious_ts = datetime.now(timezone.utc).replace(hour=2, minute=30, second=0)
     payload = {
         "transaction_id": "T-TOD-001",
         "merchant_id": "MER001",

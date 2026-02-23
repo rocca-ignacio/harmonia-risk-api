@@ -16,7 +16,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import aiosqlite
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.database.db import DB_PATH, init_db
 
@@ -25,10 +25,10 @@ random.seed(42)
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def days_ago(n: float) -> str:
-    return (datetime.utcnow() - timedelta(days=n)).isoformat()
+    return (datetime.now(timezone.utc) - timedelta(days=n)).isoformat()
 
 def hours_ago(n: float) -> str:
-    return (datetime.utcnow() - timedelta(hours=n)).isoformat()
+    return (datetime.now(timezone.utc) - timedelta(hours=n)).isoformat()
 
 
 def tx(
@@ -308,7 +308,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-06-01T00:00:00",
-            "timestamp": (datetime.utcnow() - timedelta(seconds=5)).isoformat(),
+            "timestamp": (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat(),
         },
     },
     "velocity_attack": {
@@ -327,7 +327,7 @@ TEST_SCENARIOS = {
                 "user_country": "PHL",
                 "ip_country": "PHL",
                 "account_created_at": "2022-01-01T00:00:00",
-                "timestamp": (datetime.utcnow() - timedelta(minutes=9 - k * 2)).isoformat(),
+                "timestamp": (datetime.now(timezone.utc) - timedelta(minutes=9 - k * 2)).isoformat(),
             }
             for k in range(1, 4)
         ],
@@ -343,7 +343,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-01-01T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "amount_anomaly": {
@@ -360,7 +360,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-03-15T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "geo_anomaly": {
@@ -377,7 +377,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "NGA",
             "account_created_at": "2022-08-20T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "money_mule": {
@@ -394,7 +394,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-11-01T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "new_account_large": {
@@ -410,8 +410,8 @@ TEST_SCENARIOS = {
             "device_id": "DEV-NEW-001",
             "user_country": "PHL",
             "ip_country": "PHL",
-            "account_created_at": (datetime.utcnow() - timedelta(days=2)).isoformat(),
-            "timestamp": datetime.utcnow().isoformat(),
+            "account_created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "blocklisted_ip": {
@@ -428,7 +428,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-06-01T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "allowlisted_recipient": {
@@ -446,7 +446,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-06-01T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "max_payout_exceeded": {
@@ -463,7 +463,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "PHL",
             "account_created_at": "2022-01-01T00:00:00",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     },
     "combined_signals": {
@@ -480,7 +480,7 @@ TEST_SCENARIOS = {
             "user_country": "PHL",
             "ip_country": "NGA",
             "account_created_at": "2022-05-10T00:00:00",
-            "timestamp": (datetime.utcnow().replace(hour=2, minute=30)).isoformat(),
+            "timestamp": (datetime.now(timezone.utc).replace(hour=2, minute=30)).isoformat(),
         },
     },
 }

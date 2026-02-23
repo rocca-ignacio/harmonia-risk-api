@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 import aiosqlite
@@ -49,7 +49,7 @@ async def score_transaction(tx: PayoutRequest, db: aiosqlite.Connection) -> Risk
     7. Return RiskAssessment
     """
     start = time.monotonic()
-    evaluated_at = datetime.utcnow()
+    evaluated_at = datetime.now(timezone.utc)
 
     rules = await rules_service.get_merchant_rules(tx.merchant_id, db)
     signals_out: list[SignalResult] = []
