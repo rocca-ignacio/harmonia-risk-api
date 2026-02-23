@@ -1,22 +1,19 @@
 import json
-import time
 from typing import Optional
 import aiosqlite
+from cachetools import TTLCache
 from app.config import settings
 from app.models.rules import MerchantRules
 
-# Simple in-memory TTL cache: merchant_id → (rules, cached_at)
-_rules_cache: dict[str, tuple[MerchantRules, float]] = {}
-_CACHE_TTL = settings.RULES_CACHE_TTL_SECONDS
+# Bounded TTL cache: evicts LRU entries beyond maxsize, auto-expires after TTL
+_rules_cache: TTLCache = TTLCache(maxsize=1000, ttl=settings.RULES_CACHE_TTL_SECONDS)
 
 
 async def get_merchant_rules(merchant_id: str, db: aiosqlite.Connection) -> MerchantRules:
     """Return rules for a merchant, from cache or DB. Falls back to safe defaults."""
-    cached = _rules_cache.get(merchant_id)
-    if cached:
-        rules, cached_at = cached
-        if time.monotonic() - cached_at < _CACHE_TTL:
-            return rules
+    rules = _rules_cache.get(merchant_id)
+    if rules is not None:
+        return rules
 
     async with db.execute(
         "SELECT rules_json FROM merchant_rules WHERE merchant_id = ?",
@@ -24,12 +21,8 @@ async def get_merchant_rules(merchant_id: str, db: aiosqlite.Connection) -> Merc
     ) as cursor:
         row = await cursor.fetchone()
 
-    if row:
-        rules = MerchantRules(**json.loads(row[0]))
-    else:
-        rules = MerchantRules(merchant_id=merchant_id)
-
-    _rules_cache[merchant_id] = (rules, time.monotonic())
+    rules = MerchantRules(**json.loads(row[0])) if row else MerchantRules(merchant_id=merchant_id)
+    _rules_cache[merchant_id] = rules
     return rules
 
 

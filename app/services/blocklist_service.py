@@ -1,13 +1,12 @@
-import time
 from typing import Optional
 import aiosqlite
+from cachetools import TTLCache
 from app.config import settings
 from app.models.transaction import PayoutRequest
 
-# Cache: (entry_type, value, merchant_id_or_global) → (is_blocked, cached_at)
-_blocklist_cache: dict[tuple, tuple[bool, float]] = {}
-_allowlist_cache: dict[tuple, tuple[bool, float]] = {}
-_CACHE_TTL = settings.BLOCKLIST_CACHE_TTL_SECONDS
+# Bounded TTL caches: auto-expire entries, evict LRU beyond maxsize
+_blocklist_cache: TTLCache = TTLCache(maxsize=10000, ttl=settings.BLOCKLIST_CACHE_TTL_SECONDS)
+_allowlist_cache: TTLCache = TTLCache(maxsize=10000, ttl=settings.BLOCKLIST_CACHE_TTL_SECONDS)
 
 
 async def is_blocklisted(tx: PayoutRequest, db: aiosqlite.Connection) -> tuple[bool, str]:
@@ -44,10 +43,8 @@ async def _check_entry(
 ) -> tuple[bool, str]:
     cache_key = (entry_type, value, merchant_id or "")
     cached = _blocklist_cache.get(cache_key)
-    if cached:
-        is_blocked, cached_at = cached
-        if time.monotonic() - cached_at < _CACHE_TTL:
-            return is_blocked, "cached"
+    if cached is not None:
+        return cached
 
     mid = merchant_id or ""
     async with db.execute(
@@ -56,10 +53,9 @@ async def _check_entry(
     ) as cursor:
         row = await cursor.fetchone()
 
-    is_blocked = row is not None
-    reason = row[0] if row else ""
-    _blocklist_cache[cache_key] = (is_blocked, time.monotonic())
-    return is_blocked, reason
+    result = (row is not None, row[0] if row else "")
+    _blocklist_cache[cache_key] = result
+    return result
 
 
 async def is_allowlisted(tx: PayoutRequest, db: aiosqlite.Connection) -> tuple[bool, str]:
@@ -67,21 +63,18 @@ async def is_allowlisted(tx: PayoutRequest, db: aiosqlite.Connection) -> tuple[b
     Check if recipient is on the merchant's allowlist.
     Returns (is_allowed, reason).
     """
-    checks = [
-        ("recipient_account", tx.recipient_account),
-    ]
+    checks = [("recipient_account", tx.recipient_account)]
     if tx.recipient_email:
         checks.append(("recipient_email", tx.recipient_email))
 
     for entry_type, value in checks:
         cache_key = (entry_type, value, tx.merchant_id)
         cached = _allowlist_cache.get(cache_key)
-        if cached:
-            is_allowed, cached_at = cached
-            if time.monotonic() - cached_at < _CACHE_TTL:
-                if is_allowed:
-                    return True, "cached"
-                continue
+        if cached is not None:
+            is_allowed, reason = cached
+            if is_allowed:
+                return True, reason
+            continue
 
         async with db.execute(
             "SELECT reason FROM allowlist WHERE entry_type = ? AND value = ? AND merchant_id = ?",
@@ -89,11 +82,10 @@ async def is_allowlisted(tx: PayoutRequest, db: aiosqlite.Connection) -> tuple[b
         ) as cursor:
             row = await cursor.fetchone()
 
-        is_allowed = row is not None
-        reason = row[0] if row else ""
-        _allowlist_cache[cache_key] = (is_allowed, time.monotonic())
-        if is_allowed:
-            return True, reason
+        result = (row is not None, row[0] if row else "")
+        _allowlist_cache[cache_key] = result
+        if result[0]:
+            return True, result[1]
 
     return False, ""
 

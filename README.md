@@ -237,6 +237,57 @@ GET /api/v1/audit/{transaction_id}   Full detail: request, signals, rules_snapsh
 
 ---
 
+### Analytics
+
+Query params for all endpoints: `merchant_id` (required), `start_date`, `end_date` (ISO datetime, optional).
+
+#### `GET /api/v1/analytics/summary`
+
+Aggregate stats for a merchant over an optional date range.
+
+```json
+{
+  "merchant_id": "MER001",
+  "total_transactions": 150,
+  "by_action": { "APPROVE": 110, "REVIEW": 28, "BLOCK": 12 },
+  "by_action_pct": { "APPROVE": 73.3, "REVIEW": 18.7, "BLOCK": 8.0 },
+  "avg_risk_score": 21.4,
+  "avg_processing_time_ms": 14.7
+}
+```
+
+#### `GET /api/v1/analytics/signals`
+
+Signal trigger frequency — shows which signals fire most often and their average contribution. Useful for tuning thresholds.
+
+```json
+{
+  "merchant_id": "MER001",
+  "total_transactions": 150,
+  "signals": [
+    { "signal": "amount_anomaly", "triggered_count": 18, "trigger_rate_pct": 12.0, "avg_contribution_when_triggered": 20.3 },
+    { "signal": "geo_mismatch",   "triggered_count": 9,  "trigger_rate_pct": 6.0,  "avg_contribution_when_triggered": 14.0 }
+  ]
+}
+```
+
+#### `GET /api/v1/analytics/trends?interval=day`
+
+Daily (or hourly) breakdown of transaction volume, average score, and action counts.
+
+```json
+{
+  "merchant_id": "MER001",
+  "interval": "day",
+  "data": [
+    { "period": "2024-06-01", "count": 12, "avg_score": 18.5, "approve": 10, "review": 1, "block": 1 },
+    { "period": "2024-06-02", "count": 19, "avg_score": 34.2, "approve": 11, "review": 5, "block": 3 }
+  ]
+}
+```
+
+---
+
 ## Database Schema
 
 SQLite, created automatically on startup. Five tables:

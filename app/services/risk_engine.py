@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from datetime import datetime, timezone
@@ -5,6 +6,7 @@ from typing import Literal
 
 import aiosqlite
 
+from app.config import settings
 from app.models.risk import RiskAssessment, SignalResult
 from app.models.transaction import PayoutRequest
 from app.services import blocklist_service, rules_service
@@ -126,7 +128,18 @@ async def score_transaction(tx: PayoutRequest, db: aiosqlite.Connection) -> Risk
 
     # ── 4. Run all fraud signals ──────────────────────────────────────────────
     for signal in SIGNALS:
-        result = await signal.evaluate(tx, rules, db)
+        try:
+            result = await asyncio.wait_for(
+                signal.evaluate(tx, rules, db),
+                timeout=settings.SIGNAL_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            result = SignalResult(
+                signal=signal.signal_name,
+                triggered=False,
+                score_contribution=0,
+                description=f"Signal timed out after {settings.SIGNAL_TIMEOUT_SECONDS}s — scored as 0",
+            )
         signals_out.append(result)
 
     # ── 5. Composite score (capped at 100) ────────────────────────────────────
